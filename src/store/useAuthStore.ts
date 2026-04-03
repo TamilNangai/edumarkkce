@@ -8,7 +8,7 @@ interface AuthState {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
-  profile: { name: string; email: string; department_id: string | null } | null;
+  profile: { name: string; email: string; department_id: string | null; status: string } | null;
   loading: boolean;
   setSession: (session: Session | null) => void;
   fetchRole: () => Promise<void>;
@@ -44,7 +44,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!user) { set({ profile: null }); return; }
     const { data } = await supabase
       .from('profiles')
-      .select('name, email, department_id')
+      .select('name, email, department_id, status')
       .eq('user_id', user.id)
       .maybeSingle();
     set({ profile: data ?? null });
@@ -62,7 +62,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       async (_event, session) => {
         set({ session, user: session?.user ?? null });
         if (session?.user) {
-          // Use setTimeout to avoid potential deadlocks
           setTimeout(async () => {
             await get().fetchRole();
             await get().fetchProfile();

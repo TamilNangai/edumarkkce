@@ -144,6 +144,7 @@ export type Database = {
           email: string
           id: string
           name: string
+          status: string
           updated_at: string
           user_id: string
         }
@@ -153,6 +154,7 @@ export type Database = {
           email: string
           id?: string
           name: string
+          status?: string
           updated_at?: string
           user_id: string
         }
@@ -162,6 +164,7 @@ export type Database = {
           email?: string
           id?: string
           name?: string
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -302,6 +305,7 @@ export type Database = {
     }
     Functions: {
       get_user_department: { Args: { _user_id: string }; Returns: string }
+      get_user_status: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

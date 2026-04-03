@@ -56,7 +56,7 @@ export default function AdminApproval() {
 
     const { error: roleErr } = await supabase
       .from('user_roles')
-      .upsert({ user_id: userId, role }, { onConflict: 'user_id,role' });
+      .upsert({ user_id: userId, role: role as any }, { onConflict: 'user_id,role' });
 
     if (roleErr) { toast.error(roleErr.message); return; }
 

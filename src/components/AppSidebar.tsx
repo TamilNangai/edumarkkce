@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, BookOpen, Users, Building2, BarChart3, LogOut, GraduationCap,
+  LayoutDashboard, BookOpen, Users, Building2, BarChart3, LogOut, GraduationCap, ShieldCheck,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -30,6 +30,7 @@ const navItems = {
     { title: 'Class View', url: '/class-view', icon: Users },
     { title: 'Department View', url: '/department-view', icon: Building2 },
     { title: 'Reports', url: '/reports', icon: BarChart3 },
+    { title: 'User Management', url: '/admin/users', icon: ShieldCheck },
   ],
 };
 

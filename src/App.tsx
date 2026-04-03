@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom';
 import { Toaster as Sonner } from '@/components/ui/sonner';
@@ -11,20 +11,22 @@ import MarksEntry from './pages/MarksEntry';
 import ClassView from './pages/ClassView';
 import DepartmentView from './pages/DepartmentView';
 import Reports from './pages/Reports';
+import AdminApproval from './pages/AdminApproval';
 import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
-  const { user, role, loading } = useAuthStore();
+  const { user, role, loading, profile } = useAuthStore();
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
   if (!user) return <Navigate to="/login" replace />;
+  if (profile?.status !== 'active') return <Navigate to="/login" replace />;
   if (allowedRoles && role && !allowedRoles.includes(role)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
 function AppRoutes() {
-  const { user, loading } = useAuthStore();
+  const { user, loading, profile } = useAuthStore();
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
@@ -32,12 +34,13 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/login" element={user && profile?.status === 'active' ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/marks-entry" element={<ProtectedRoute allowedRoles={['teacher', 'principal']}><MarksEntry /></ProtectedRoute>} />
       <Route path="/class-view" element={<ProtectedRoute allowedRoles={['coordinator', 'principal']}><ClassView /></ProtectedRoute>} />
       <Route path="/department-view" element={<ProtectedRoute allowedRoles={['hod', 'principal']}><DepartmentView /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute allowedRoles={['hod', 'principal']}><Reports /></ProtectedRoute>} />
+      <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['principal']}><AdminApproval /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

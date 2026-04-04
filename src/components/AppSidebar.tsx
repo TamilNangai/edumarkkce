@@ -27,7 +27,6 @@ const navItems = {
   ],
   principal: [
     { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-    { title: 'Marks Entry', url: '/marks-entry', icon: BookOpen },
     { title: 'Class View', url: '/class-view', icon: Users },
     { title: 'Department View', url: '/department-view', icon: Building2 },
     { title: 'Reports', url: '/reports', icon: BarChart3 },

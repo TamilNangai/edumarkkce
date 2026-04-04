@@ -29,7 +29,6 @@ export default function MarksEntry() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 400);
     return () => clearTimeout(timer);
@@ -38,23 +37,22 @@ export default function MarksEntry() {
   const ts = teacherSubjects?.find((t: any) => t.id === selectedTs);
   const { data: students } = useStudentsByClass(ts?.class_id ?? null);
 
-  // Load existing marks when subject+exam selected
   const { data: existingMarks } = useMarks({
     subject_id: ts?.subject_id,
     exam_id: selectedExam || undefined,
   });
 
-  // Pre-fill marks from existing data
+  // Pre-fill marks from existing data using is_absent flag
   useEffect(() => {
     if (existingMarks && existingMarks.length > 0) {
       const newMap: Record<string, string> = {};
       const newAbsent: Record<string, boolean> = {};
       existingMarks.forEach((m: any) => {
-        if (m.marks_obtained === -1) {
+        if (m.is_absent) {
           newAbsent[m.student_id] = true;
           newMap[m.student_id] = '';
         } else {
-          newMap[m.student_id] = String(m.marks_obtained);
+          newMap[m.student_id] = m.marks_obtained != null ? String(m.marks_obtained) : '';
         }
       });
       setMarksMap(newMap);
@@ -79,38 +77,54 @@ export default function MarksEntry() {
     if (!ts || !selectedExam || !user) return;
 
     const entries = (students || []).map((s: any) => {
-      const isAbsent = absentMap[s.id];
+      const isAbsent = absentMap[s.id] ?? false;
       const val = marksMap[s.id];
-      const obtained = isAbsent ? -1 : (val !== undefined && val !== '' ? Number(val) : null);
-      if (obtained === null) return null; // Not entered, skip
+
+      if (isAbsent) {
+        return {
+          student_id: s.id,
+          subject_id: ts.subject_id,
+          exam_id: selectedExam,
+          marks_obtained: null,
+          is_absent: true,
+          max_marks: maxMarks,
+          entered_by: user.id,
+        };
+      }
+
+      if (val === undefined || val === '') return null; // Not entered, skip
+      const obtained = Number(val);
+      if (isNaN(obtained) || obtained < 0 || obtained > maxMarks) {
+        toast.error(`Invalid marks for student. Must be 0–${maxMarks}`);
+        return 'INVALID';
+      }
       return {
         student_id: s.id,
         subject_id: ts.subject_id,
         exam_id: selectedExam,
         marks_obtained: obtained,
+        is_absent: false,
         max_marks: maxMarks,
         entered_by: user.id,
       };
-    }).filter(Boolean);
+    });
 
-    if (entries.length === 0) {
+    if (entries.includes('INVALID')) return;
+    const validEntries = entries.filter((e) => e !== null && e !== 'INVALID');
+
+    if (validEntries.length === 0) {
       toast.error('Enter marks for at least one student');
       return;
     }
 
-    const invalid = entries.find((e: any) => !absentMap[e.student_id] && e.marks_obtained !== -1 && (e.marks_obtained < 0 || e.marks_obtained > maxMarks));
-    if (invalid) {
-      toast.error(`Marks must be between 0 and ${maxMarks}`);
-      return;
-    }
-
     setSaving(true);
-    const { error } = await supabase.from('marks').upsert(entries as any[], {
+    const { error } = await supabase.from('marks').upsert(validEntries as any[], {
       onConflict: 'student_id,subject_id,exam_id',
     });
     setSaving(false);
 
     if (error) {
+      console.error('Marks save error:', error);
       toast.error(error.message);
     } else {
       toast.success('Marks saved successfully');
@@ -124,9 +138,7 @@ export default function MarksEntry() {
         <h1 className="text-2xl font-bold">Marks Entry</h1>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Select Subject & Exam</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Select Subject & Exam</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Select value={selectedTs} onValueChange={(v) => { setSelectedTs(v); setMarksMap({}); setAbsentMap({}); }}>
               <SelectTrigger><SelectValue placeholder="Select Subject/Class" /></SelectTrigger>

@@ -12,8 +12,7 @@ import { Button } from '@/components/ui/button';
 
 const navItems = {
   teacher: [
-    { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-    { title: 'Marks Entry', url: '/marks-entry', icon: BookOpen },
+    { title: 'Marks Entry', url: '/', icon: BookOpen },
   ],
   coordinator: [
     { title: 'Dashboard', url: '/', icon: LayoutDashboard },

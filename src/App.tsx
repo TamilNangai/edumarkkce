@@ -12,6 +12,8 @@ import ClassView from './pages/ClassView';
 import DepartmentView from './pages/DepartmentView';
 import Reports from './pages/Reports';
 import AdminApproval from './pages/AdminApproval';
+import CoordinatorDashboard from './pages/CoordinatorDashboard';
+import HodDashboard from './pages/HodDashboard';
 import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient();
@@ -25,6 +27,17 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode;
   return <>{children}</>;
 }
 
+function RoleBasedHome() {
+  const { role } = useAuthStore();
+  switch (role) {
+    case 'principal': return <Dashboard />;
+    case 'coordinator': return <CoordinatorDashboard />;
+    case 'hod': return <HodDashboard />;
+    case 'teacher': return <MarksEntry />;
+    default: return <Dashboard />;
+  }
+}
+
 function AppRoutes() {
   const { user, loading, profile } = useAuthStore();
 
@@ -35,9 +48,11 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={user && profile?.status === 'active' ? <Navigate to="/" replace /> : <Login />} />
-      <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/" element={<ProtectedRoute><RoleBasedHome /></ProtectedRoute>} />
       <Route path="/marks-entry" element={<ProtectedRoute allowedRoles={['teacher', 'principal']}><MarksEntry /></ProtectedRoute>} />
       <Route path="/class-view" element={<ProtectedRoute allowedRoles={['coordinator', 'principal']}><ClassView /></ProtectedRoute>} />
+      <Route path="/coordinator-dashboard" element={<ProtectedRoute allowedRoles={['coordinator', 'principal']}><CoordinatorDashboard /></ProtectedRoute>} />
+      <Route path="/hod-dashboard" element={<ProtectedRoute allowedRoles={['hod', 'principal']}><HodDashboard /></ProtectedRoute>} />
       <Route path="/department-view" element={<ProtectedRoute allowedRoles={['hod', 'principal']}><DepartmentView /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute allowedRoles={['hod', 'principal']}><Reports /></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['principal']}><AdminApproval /></ProtectedRoute>} />

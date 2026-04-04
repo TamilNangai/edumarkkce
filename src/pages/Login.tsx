@@ -45,6 +45,7 @@ const Login = () => {
       toast.error('Your account has been rejected. Please contact the administrator.');
       return;
     }
+    // Role-based redirect will be handled by App.tsx routing
     setLoading(false);
     toast.success('Logged in successfully');
   };

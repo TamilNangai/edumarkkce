@@ -28,11 +28,12 @@ export default function Dashboard() {
   const { data: departments } = useDepartments();
   const { data: classes } = useClasses();
 
-  const totalMarks = marks?.length ?? 0;
-  const avgMarks = marks && marks.length > 0
-    ? Math.round(marks.reduce((sum: number, m: any) => sum + (m.marks_obtained / m.max_marks) * 100, 0) / marks.length)
+  const presentMarks = marks?.filter((m: any) => !m.is_absent && m.marks_obtained != null) ?? [];
+  const totalMarks = presentMarks.length;
+  const avgMarks = totalMarks > 0
+    ? Math.round(presentMarks.reduce((sum: number, m: any) => sum + (m.marks_obtained / m.max_marks) * 100, 0) / totalMarks)
     : 0;
-  const passCount = marks?.filter((m: any) => (m.marks_obtained / m.max_marks) * 100 >= 40).length ?? 0;
+  const passCount = presentMarks.filter((m: any) => (m.marks_obtained / m.max_marks) * 100 >= 40).length;
   const passPercentage = totalMarks > 0 ? Math.round((passCount / totalMarks) * 100) : 0;
 
   // Chart data - group by subject

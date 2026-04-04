@@ -49,7 +49,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={user && profile?.status === 'active' ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/" element={<ProtectedRoute><RoleBasedHome /></ProtectedRoute>} />
-      <Route path="/marks-entry" element={<ProtectedRoute allowedRoles={['teacher', 'principal']}><MarksEntry /></ProtectedRoute>} />
+      <Route path="/marks-entry" element={<ProtectedRoute allowedRoles={['teacher']}><MarksEntry /></ProtectedRoute>} />
       <Route path="/class-view" element={<ProtectedRoute allowedRoles={['coordinator', 'principal']}><ClassView /></ProtectedRoute>} />
       <Route path="/coordinator-dashboard" element={<ProtectedRoute allowedRoles={['coordinator', 'principal']}><CoordinatorDashboard /></ProtectedRoute>} />
       <Route path="/hod-dashboard" element={<ProtectedRoute allowedRoles={['hod', 'principal']}><HodDashboard /></ProtectedRoute>} />

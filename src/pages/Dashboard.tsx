@@ -38,7 +38,7 @@ export default function Dashboard() {
 
   // Chart data - group by subject
   const subjectMap = new Map<string, { name: string; total: number; count: number }>();
-  marks?.forEach((m: any) => {
+  presentMarks.forEach((m: any) => {
     const name = m.subjects?.name ?? 'Unknown';
     const existing = subjectMap.get(name) || { name, total: 0, count: 0 };
     existing.total += (m.marks_obtained / m.max_marks) * 100;

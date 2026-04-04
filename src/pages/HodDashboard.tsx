@@ -113,7 +113,7 @@ export default function HodDashboard() {
   // Filter marks by selected class
   const filteredMarks = useMemo(() => {
     if (!marks) return [];
-    if (!selectedClass) return marks;
+    if (!selectedClass || selectedClass === 'all') return marks;
     return marks.filter((m: any) => m.students?.class_id === selectedClass);
   }, [marks, selectedClass]);
 

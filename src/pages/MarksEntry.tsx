@@ -110,7 +110,7 @@ export default function MarksEntry() {
     });
 
     if (entries.includes('INVALID')) return;
-    const validEntries = entries.filter((e): e is Record<string, any> => e !== null && e !== 'INVALID');
+    const validEntries = entries.filter((e) => e !== null && e !== 'INVALID');
 
     if (validEntries.length === 0) {
       toast.error('Enter marks for at least one student');

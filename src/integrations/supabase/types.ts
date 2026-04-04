@@ -88,7 +88,8 @@ export type Database = {
           entered_by: string
           exam_id: string
           id: string
-          marks_obtained: number
+          is_absent: boolean
+          marks_obtained: number | null
           max_marks: number
           student_id: string
           subject_id: string
@@ -98,7 +99,8 @@ export type Database = {
           entered_by: string
           exam_id: string
           id?: string
-          marks_obtained: number
+          is_absent?: boolean
+          marks_obtained?: number | null
           max_marks: number
           student_id: string
           subject_id: string
@@ -108,7 +110,8 @@ export type Database = {
           entered_by?: string
           exam_id?: string
           id?: string
-          marks_obtained?: number
+          is_absent?: boolean
+          marks_obtained?: number | null
           max_marks?: number
           student_id?: string
           subject_id?: string

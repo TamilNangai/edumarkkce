@@ -304,6 +304,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_coordinator_class_ids: {
+        Args: { _user_id: string }
+        Returns: string[]
+      }
       get_user_department: { Args: { _user_id: string }; Returns: string }
       get_user_status: { Args: { _user_id: string }; Returns: string }
       has_role: {

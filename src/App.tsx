@@ -54,7 +54,7 @@ function AppRoutes() {
       <Route path="/coordinator-dashboard" element={<ProtectedRoute allowedRoles={['coordinator', 'principal']}><CoordinatorDashboard /></ProtectedRoute>} />
       <Route path="/hod-dashboard" element={<ProtectedRoute allowedRoles={['hod', 'principal']}><HodDashboard /></ProtectedRoute>} />
       <Route path="/department-view" element={<ProtectedRoute allowedRoles={['hod', 'principal']}><DepartmentView /></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute allowedRoles={['hod', 'principal']}><Reports /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute allowedRoles={['teacher', 'coordinator', 'hod', 'principal']}><Reports /></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['principal']}><AdminApproval /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>

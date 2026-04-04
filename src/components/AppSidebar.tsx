@@ -13,10 +13,12 @@ import { Button } from '@/components/ui/button';
 const navItems = {
   teacher: [
     { title: 'Marks Entry', url: '/', icon: BookOpen },
+    { title: 'Reports', url: '/reports', icon: BarChart3 },
   ],
   coordinator: [
     { title: 'Dashboard', url: '/', icon: LayoutDashboard },
     { title: 'Class View', url: '/class-view', icon: Users },
+    { title: 'Reports', url: '/reports', icon: BarChart3 },
   ],
   hod: [
     { title: 'Dashboard', url: '/', icon: LayoutDashboard },

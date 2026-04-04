@@ -89,21 +89,25 @@ export default function CoordinatorDashboard() {
     },
   });
 
-  // Get marks for assigned subjects
-  const { data: marks } = useQuery({
+  // Get marks for assigned classes - filter by student class_id
+  const { data: marks, isLoading: marksLoading } = useQuery({
     queryKey: ['coordinator_marks', classIds, selectedExam],
     queryFn: async () => {
       if (classIds.length === 0) return [];
+      // Get student IDs in assigned classes first
+      const studentIds = (students || []).map((s: any) => s.id);
+      if (studentIds.length === 0) return [];
       let query = supabase
         .from('marks')
-        .select('*, students(*), subjects(*), exams(*)');
+        .select('*, students(*), subjects(*), exams(*)')
+        .in('student_id', studentIds);
       if (selectedExam) query = query.eq('exam_id', selectedExam);
       const { data, error } = await query;
       console.log('Coordinator marks:', data, error);
       if (error) throw error;
       return data;
     },
-    enabled: classIds.length > 0,
+    enabled: classIds.length > 0 && !!students,
   });
 
   const filtered = useMemo(() => {

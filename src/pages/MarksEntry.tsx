@@ -10,11 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { Save, Search } from 'lucide-react';
+import { Save } from 'lucide-react';
 
 export default function MarksEntry() {
   const { user } = useAuthStore();
@@ -22,29 +23,58 @@ export default function MarksEntry() {
   const { data: teacherSubjects, isLoading: tsLoading } = useTeacherSubjects();
   const { data: exams } = useExams();
 
-  const [selectedTs, setSelectedTs] = useState<string>('');
-  const [selectedExam, setSelectedExam] = useState<string>('');
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedSubjectId, setSelectedSubjectId] = useState('');
+  const [selectedExam, setSelectedExam] = useState('');
   const [maxMarks, setMaxMarks] = useState<number>(100);
   const [marksMap, setMarksMap] = useState<Record<string, string>>({});
   const [absentMap, setAbsentMap] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 400);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+  // Derive unique classes from teacher assignments
+  const assignedClasses = useMemo(() => {
+    if (!teacherSubjects) return [];
+    const classMap = new Map<string, { id: string; name: string }>();
+    teacherSubjects.forEach((ts: any) => {
+      if (ts.classes && !classMap.has(ts.class_id)) {
+        classMap.set(ts.class_id, { id: ts.class_id, name: ts.classes.name });
+      }
+    });
+    return Array.from(classMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [teacherSubjects]);
 
-  const ts = teacherSubjects?.find((t: any) => t.id === selectedTs);
-  const { data: students } = useStudentsByClass(ts?.class_id ?? null);
+  // Derive subjects for selected class
+  const assignedSubjects = useMemo(() => {
+    if (!teacherSubjects || !selectedClassId) return [];
+    return teacherSubjects
+      .filter((ts: any) => ts.class_id === selectedClassId && ts.subjects)
+      .map((ts: any) => ({ id: ts.subject_id, name: ts.subjects.name }))
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
+  }, [teacherSubjects, selectedClassId]);
+
+  const { data: students, isLoading: studentsLoading } = useStudentsByClass(selectedClassId || null);
   const { data: existingMarks } = useMarks({
-    subject_id: ts?.subject_id,
+    subject_id: selectedSubjectId || undefined,
     exam_id: selectedExam || undefined,
+    class_id: selectedClassId || undefined,
   });
 
+  // Reset downstream selections
   useEffect(() => {
-    if (existingMarks && existingMarks.length > 0) {
+    setSelectedSubjectId('');
+    setSelectedExam('');
+    setMarksMap({});
+    setAbsentMap({});
+  }, [selectedClassId]);
+
+  useEffect(() => {
+    setMarksMap({});
+    setAbsentMap({});
+  }, [selectedSubjectId, selectedExam]);
+
+  // Load existing marks
+  useEffect(() => {
+    if (existingMarks && existingMarks.length > 0 && selectedSubjectId && selectedExam) {
       const newMap: Record<string, string> = {};
       const newAbsent: Record<string, boolean> = {};
       existingMarks.forEach((m: any) => {
@@ -57,146 +87,261 @@ export default function MarksEntry() {
       });
       setMarksMap(newMap);
       setAbsentMap(newAbsent);
-    } else {
-      setMarksMap({});
-      setAbsentMap({});
     }
-  }, [existingMarks]);
+  }, [existingMarks, selectedSubjectId, selectedExam]);
 
-  const filteredStudents = useMemo(() => {
-    if (!students) return [];
-    if (!debouncedSearch) return students;
-    const term = debouncedSearch.toLowerCase();
-    return students.filter((s: any) =>
-      s.name.toLowerCase().includes(term) ||
-      s.register_number.toLowerCase().includes(term)
-    );
-  }, [students, debouncedSearch]);
+  const allSelected = selectedClassId && selectedSubjectId && selectedExam;
 
   const handleSave = async () => {
-    if (!ts || !selectedExam || !user) return;
-    const entries = (students || []).map((s: any) => {
+    if (!selectedSubjectId || !selectedExam || !user || !students) return;
+
+    const entries: any[] = [];
+    for (const s of students) {
       const isAbsent = absentMap[s.id] ?? false;
-      const val = marksMap[s.id];
+      const val = marksMap[s.id] ?? '';
+
       if (isAbsent) {
-        return { student_id: s.id, subject_id: ts.subject_id, exam_id: selectedExam, marks_obtained: null, is_absent: true, max_marks: maxMarks, entered_by: user.id };
+        entries.push({
+          student_id: s.id,
+          subject_id: selectedSubjectId,
+          exam_id: selectedExam,
+          marks_obtained: null,
+          is_absent: true,
+          max_marks: maxMarks,
+          entered_by: user.id,
+        });
+        continue;
       }
-      if (val === undefined || val === '') return null;
+
+      if (val === '') continue; // skip students with no input
+
       const obtained = Number(val);
       if (isNaN(obtained) || obtained < 0 || obtained > maxMarks) {
-        toast.error(`Invalid marks for student. Must be 0–${maxMarks}`);
-        return 'INVALID';
+        toast.error(`Invalid marks for ${s.name}. Must be 0–${maxMarks}`);
+        return;
       }
-      return { student_id: s.id, subject_id: ts.subject_id, exam_id: selectedExam, marks_obtained: obtained, is_absent: false, max_marks: maxMarks, entered_by: user.id };
-    });
-    if (entries.includes('INVALID')) return;
-    const validEntries = entries.filter((e) => e !== null && e !== 'INVALID');
-    if (validEntries.length === 0) { toast.error('Enter marks for at least one student'); return; }
+      entries.push({
+        student_id: s.id,
+        subject_id: selectedSubjectId,
+        exam_id: selectedExam,
+        marks_obtained: obtained,
+        is_absent: false,
+        max_marks: maxMarks,
+        entered_by: user.id,
+      });
+    }
+
+    if (entries.length === 0) {
+      toast.error('Enter marks for at least one student');
+      return;
+    }
+
     setSaving(true);
-    const { error } = await supabase.from('marks').upsert(validEntries as any[], { onConflict: 'student_id,subject_id,exam_id' });
+    const { error } = await supabase
+      .from('marks')
+      .upsert(entries, { onConflict: 'student_id,subject_id,exam_id' });
     setSaving(false);
-    if (error) { console.error('Marks save error:', error); toast.error(error.message); }
-    else { toast.success('Marks saved successfully'); queryClient.invalidateQueries({ queryKey: ['marks'] }); }
+
+    if (error) {
+      console.error('Marks save error:', error);
+      toast.error(error.message);
+    } else {
+      toast.success('Marks saved successfully');
+      queryClient.invalidateQueries({ queryKey: ['marks'] });
+    }
   };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <PageHeader title="Marks Entry" description="Enter and manage student marks" />
+        <PageHeader title="Marks Entry" description="Select class, subject and exam to enter marks" />
 
+        {/* Filter Section */}
         <Card className="rounded-2xl border-0 shadow-md">
-          <CardHeader><CardTitle className="text-lg">Select Subject & Exam</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Select value={selectedTs} onValueChange={(v) => { setSelectedTs(v); setMarksMap({}); setAbsentMap({}); }}>
-              <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select Subject/Class" /></SelectTrigger>
-              <SelectContent>
-                {teacherSubjects?.map((ts: any) => (
-                  <SelectItem key={ts.id} value={ts.id}>{ts.subjects?.name} - {ts.classes?.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedExam} onValueChange={(v) => { setSelectedExam(v); setMarksMap({}); setAbsentMap({}); }}>
-              <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select Exam" /></SelectTrigger>
-              <SelectContent>
-                {exams?.map((e: any) => (
-                  <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input type="number" placeholder="Max Marks" value={maxMarks} onChange={(e) => setMaxMarks(Number(e.target.value))} min={1} className="rounded-xl h-11" />
+          <CardHeader>
+            <CardTitle className="text-lg">Select Class, Subject & Exam</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Class */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted-foreground">Class</label>
+              <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                <SelectTrigger className="rounded-xl h-11">
+                  <SelectValue placeholder={tsLoading ? 'Loading...' : 'Select Class'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignedClasses.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Subject */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted-foreground">Subject</label>
+              <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId} disabled={!selectedClassId}>
+                <SelectTrigger className="rounded-xl h-11">
+                  <SelectValue placeholder="Select Subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignedSubjects.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Exam */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted-foreground">Exam</label>
+              <Select value={selectedExam} onValueChange={setSelectedExam} disabled={!selectedSubjectId}>
+                <SelectTrigger className="rounded-xl h-11">
+                  <SelectValue placeholder="Select Exam" />
+                </SelectTrigger>
+                <SelectContent>
+                  {exams?.map((e: any) => (
+                    <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Max Marks */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted-foreground">Max Marks</label>
+              <Input
+                type="number"
+                value={maxMarks}
+                onChange={(e) => setMaxMarks(Number(e.target.value))}
+                min={1}
+                className="rounded-xl h-11"
+              />
+            </div>
           </CardContent>
         </Card>
 
-        {students && students.length > 0 && selectedExam && (
+        {/* Students Table */}
+        {allSelected && studentsLoading && (
           <Card className="rounded-2xl border-0 shadow-md">
-            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <CardTitle className="text-lg">Enter Marks</CardTitle>
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <div className="relative flex-1 sm:flex-none">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search student..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-full sm:w-56 rounded-xl h-11" />
-                </div>
-                <Button onClick={handleSave} disabled={saving} className="gradient-primary rounded-xl h-11 px-6 shadow-lg shadow-primary/20 transition-all hover:shadow-xl shrink-0">
-                  <Save className="h-4 w-4 mr-2" />
-                  {saving ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {filteredStudents.length === 0 ? (
-                <EmptyState message="No students found" description="Try adjusting your search." />
-              ) : (
-                <div className="overflow-x-auto rounded-xl border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="table-header-blue">
-                        <TableHead className="font-semibold">Reg. No</TableHead>
-                        <TableHead className="font-semibold">Name</TableHead>
-                        <TableHead className="w-24 font-semibold">Absent</TableHead>
-                        <TableHead className="w-32 font-semibold">Marks (/{maxMarks})</TableHead>
-                        <TableHead className="w-20 font-semibold">Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredStudents.map((s: any) => {
-                        const isAbsent = absentMap[s.id] ?? false;
-                        const val = marksMap[s.id] ?? '';
-                        const hasValue = val !== '' && !isAbsent;
-                        const pct = hasValue ? Math.round((Number(val) / maxMarks) * 100) : null;
-                        return (
-                          <TableRow key={s.id} className={`transition-colors ${isAbsent ? 'opacity-50 bg-muted/30' : 'hover:bg-accent/50'}`}>
-                            <TableCell className="font-mono text-sm">{s.register_number}</TableCell>
-                            <TableCell className="font-medium">{s.name}</TableCell>
-                            <TableCell>
-                              <Checkbox checked={isAbsent} onCheckedChange={(checked) => setAbsentMap(prev => ({ ...prev, [s.id]: !!checked }))} />
-                            </TableCell>
-                            <TableCell>
-                              <Input type="number" min={0} max={maxMarks} value={isAbsent ? '' : val} disabled={isAbsent} onChange={(e) => setMarksMap(prev => ({ ...prev, [s.id]: e.target.value }))} className="w-24 rounded-lg" placeholder={isAbsent ? 'AB' : '—'} />
-                            </TableCell>
-                            <TableCell>
-                              {isAbsent ? (
-                                <Badge variant="outline" className="rounded-lg">AB</Badge>
-                              ) : pct !== null ? (
-                                <Badge variant={pct >= 40 ? 'default' : 'destructive'} className="rounded-lg">{pct >= 40 ? 'Pass' : 'Fail'}</Badge>
-                              ) : (
-                                <span className="text-muted-foreground text-xs">—</span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+            <CardContent className="p-6 space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-12 w-full rounded-lg" />
+              ))}
             </CardContent>
           </Card>
         )}
 
-        {selectedTs && selectedExam && students && students.length === 0 && (
+        {allSelected && !studentsLoading && (!students || students.length === 0) && (
           <Card className="rounded-2xl border-0 shadow-md">
+            <CardContent className="p-6">
+              <EmptyState message="No students found" description="No students are enrolled in this class." />
+            </CardContent>
+          </Card>
+        )}
+
+        {allSelected && !studentsLoading && students && students.length > 0 && (
+          <Card className="rounded-2xl border-0 shadow-md">
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <CardTitle className="text-lg">
+                Enter Marks ({students.length} students)
+              </CardTitle>
+            </CardHeader>
             <CardContent>
-              <EmptyState message="No students found" description="No students found for the selected class." />
+              <div className="overflow-x-auto rounded-xl border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="table-header-blue">
+                      <TableHead className="font-semibold w-12">#</TableHead>
+                      <TableHead className="font-semibold">Reg. No</TableHead>
+                      <TableHead className="font-semibold">Student Name</TableHead>
+                      <TableHead className="font-semibold w-24 text-center">Absent</TableHead>
+                      <TableHead className="font-semibold w-32">Marks (/{maxMarks})</TableHead>
+                      <TableHead className="font-semibold w-20 text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {students.map((s: any, idx: number) => {
+                      const isAbsent = absentMap[s.id] ?? false;
+                      const val = marksMap[s.id] ?? '';
+                      const hasValue = val !== '' && !isAbsent;
+                      const pct = hasValue ? Math.round((Number(val) / maxMarks) * 100) : null;
+
+                      return (
+                        <TableRow
+                          key={s.id}
+                          className={`transition-colors ${isAbsent ? 'opacity-50 bg-muted/30' : 'hover:bg-accent/50'}`}
+                        >
+                          <TableCell className="text-muted-foreground text-sm">{idx + 1}</TableCell>
+                          <TableCell className="font-mono text-sm">{s.register_number}</TableCell>
+                          <TableCell className="font-medium">{s.name}</TableCell>
+                          <TableCell className="text-center">
+                            <Checkbox
+                              checked={isAbsent}
+                              onCheckedChange={(checked) =>
+                                setAbsentMap((prev) => ({ ...prev, [s.id]: !!checked }))
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={maxMarks}
+                              value={isAbsent ? '' : val}
+                              disabled={isAbsent}
+                              onChange={(e) =>
+                                setMarksMap((prev) => ({ ...prev, [s.id]: e.target.value }))
+                              }
+                              className="w-24 rounded-lg"
+                              placeholder={isAbsent ? 'AB' : '—'}
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isAbsent ? (
+                              <Badge variant="outline" className="rounded-lg">AB</Badge>
+                            ) : pct !== null ? (
+                              <Badge
+                                variant={pct >= 40 ? 'default' : 'destructive'}
+                                className="rounded-lg"
+                              >
+                                {pct >= 40 ? 'Pass' : 'Fail'}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end mt-6">
+                <Button
+                  onClick={handleSave}
+                  disabled={saving}
+                  size="lg"
+                  className="gradient-primary rounded-xl px-8 shadow-lg shadow-primary/20 transition-all hover:shadow-xl"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {saving ? 'Submitting...' : 'Submit Marks'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* No assignments message */}
+        {!tsLoading && (!teacherSubjects || teacherSubjects.length === 0) && (
+          <Card className="rounded-2xl border-0 shadow-md">
+            <CardContent className="p-6">
+              <EmptyState
+                message="No assignments found"
+                description="You have no class-subject assignments. Contact your principal to get assigned."
+              />
             </CardContent>
           </Card>
         )}

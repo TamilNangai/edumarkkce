@@ -1,0 +1,1 @@
+UPDATE public.profiles SET status = 'active' WHERE user_id = 'ca06375b-cfbb-4bba-ba02-d759e1afea99';

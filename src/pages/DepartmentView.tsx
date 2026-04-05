@@ -4,9 +4,11 @@ import { useDepartments, useClasses, useMarks, useSubjects } from '@/hooks/useMa
 import { useAuthStore } from '@/store/useAuthStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PageHeader } from '@/components/PageHeader';
+import { EmptyState } from '@/components/EmptyState';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 
-const COLORS = ['hsl(217,91%,60%)', 'hsl(142,71%,45%)', 'hsl(38,92%,50%)', 'hsl(0,84%,60%)', 'hsl(262,83%,58%)'];
+const COLORS = ['hsl(217,91%,60%)', 'hsl(0,84%,60%)'];
 
 export default function DepartmentView() {
   const { profile, role } = useAuthStore();
@@ -16,11 +18,9 @@ export default function DepartmentView() {
   const { data: subjects } = useSubjects(selectedDept || undefined);
   const { data: marks } = useMarks();
 
-  // Filter marks by department subjects
   const deptSubjectIds = new Set(subjects?.map((s: any) => s.id) ?? []);
-  const deptMarks = marks?.filter((m: any) => deptSubjectIds.has(m.subject_id)) ?? [];
+  const deptMarks = marks?.filter((m: any) => deptSubjectIds.has(m.subject_id) && !m.is_absent && m.marks_obtained != null) ?? [];
 
-  // Class performance
   const classMap = new Map<string, { name: string; total: number; count: number; pass: number }>();
   deptMarks.forEach((m: any) => {
     const cls = classes?.find((c: any) => c.id === m.students?.class_id);
@@ -39,7 +39,6 @@ export default function DepartmentView() {
     passRate: Math.round((c.pass / c.count) * 100),
   }));
 
-  // Pass/Fail pie
   const totalPass = deptMarks.filter((m: any) => (m.marks_obtained / m.max_marks) * 100 >= 40).length;
   const totalFail = deptMarks.length - totalPass;
   const pieData = [
@@ -49,14 +48,14 @@ export default function DepartmentView() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Department View</h1>
+      <div className="space-y-8">
+        <PageHeader title="Department View" description="Analyze department-level performance" />
 
         {role === 'principal' && (
-          <Card>
+          <Card className="rounded-2xl border-0 shadow-md">
             <CardContent className="pt-6">
               <Select value={selectedDept} onValueChange={setSelectedDept}>
-                <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
+                <SelectTrigger className="rounded-xl h-11"><SelectValue placeholder="Select Department" /></SelectTrigger>
                 <SelectContent>
                   {departments?.map((d: any) => (
                     <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
@@ -67,42 +66,50 @@ export default function DepartmentView() {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {classChartData.length > 0 && (
-            <Card>
-              <CardHeader><CardTitle>Class-wise Average</CardTitle></CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={classChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip />
-                    <Bar dataKey="average" fill="hsl(217,91%,60%)" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
+        {classChartData.length > 0 || deptMarks.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {classChartData.length > 0 && (
+              <Card className="rounded-2xl border-0 shadow-md">
+                <CardHeader><CardTitle className="text-lg">Class-wise Average</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={320}>
+                    <BarChart data={classChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(214 32% 91%)" />
+                      <XAxis dataKey="name" />
+                      <YAxis domain={[0, 100]} />
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }} />
+                      <Bar dataKey="average" fill="hsl(217,91%,60%)" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
 
-          {deptMarks.length > 0 && (
-            <Card>
-              <CardHeader><CardTitle>Pass vs Fail</CardTitle></CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label>
-                      {pieData.map((_, i) => (
-                        <Cell key={i} fill={COLORS[i]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+            {deptMarks.length > 0 && (
+              <Card className="rounded-2xl border-0 shadow-md">
+                <CardHeader><CardTitle className="text-lg">Pass vs Fail</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={320}>
+                    <PieChart>
+                      <Pie data={pieData} cx="50%" cy="50%" outerRadius={110} innerRadius={60} dataKey="value" label paddingAngle={2}>
+                        {pieData.map((_, i) => (
+                          <Cell key={i} fill={COLORS[i]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        ) : (
+          <Card className="rounded-2xl border-0 shadow-md">
+            <CardContent>
+              <EmptyState message="No data available" description="Select a department to view performance analytics." />
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );

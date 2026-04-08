@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, BookOpen, Users, Building2, BarChart3, LogOut, GraduationCap, ShieldCheck,
+  LayoutDashboard, BookOpen, Users, Building2, BarChart3, LogOut, GraduationCap, ShieldCheck, UserPlus,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -24,7 +24,7 @@ const navItems = {
   hod: [
     { title: 'Dashboard', url: '/', icon: LayoutDashboard },
     { title: 'Department View', url: '/department-view', icon: Building2 },
-    { title: 'Manage Students', url: '/manage-students', icon: Users },
+    { title: 'Manage Students', url: '/manage-students', icon: UserPlus },
     { title: 'Reports', url: '/reports', icon: BarChart3 },
   ],
   principal: [

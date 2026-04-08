@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, BookOpen, Users, Building2, BarChart3, LogOut, GraduationCap, ShieldCheck,
+  LayoutDashboard, BookOpen, Users, Building2, BarChart3, LogOut, GraduationCap, ShieldCheck, UserPlus,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuthStore } from '@/store/useAuthStore';

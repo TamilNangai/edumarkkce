@@ -14,6 +14,7 @@ import Reports from './pages/Reports';
 import AdminApproval from './pages/AdminApproval';
 import CoordinatorDashboard from './pages/CoordinatorDashboard';
 import HodDashboard from './pages/HodDashboard';
+import ManageStudents from './pages/ManageStudents';
 import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ function AppRoutes() {
       <Route path="/coordinator-dashboard" element={<ProtectedRoute allowedRoles={['coordinator', 'principal']}><CoordinatorDashboard /></ProtectedRoute>} />
       <Route path="/hod-dashboard" element={<ProtectedRoute allowedRoles={['hod', 'principal']}><HodDashboard /></ProtectedRoute>} />
       <Route path="/department-view" element={<ProtectedRoute allowedRoles={['hod', 'principal']}><DepartmentView /></ProtectedRoute>} />
+      <Route path="/manage-students" element={<ProtectedRoute allowedRoles={['hod', 'principal']}><ManageStudents /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute allowedRoles={['teacher', 'coordinator', 'hod', 'principal']}><Reports /></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['principal']}><AdminApproval /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />

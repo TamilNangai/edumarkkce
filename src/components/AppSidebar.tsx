@@ -24,6 +24,7 @@ const navItems = {
   hod: [
     { title: 'Dashboard', url: '/', icon: LayoutDashboard },
     { title: 'Department View', url: '/department-view', icon: Building2 },
+    { title: 'Manage Students', url: '/manage-students', icon: Users },
     { title: 'Reports', url: '/reports', icon: BarChart3 },
   ],
   principal: [
